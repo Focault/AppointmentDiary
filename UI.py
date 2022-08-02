@@ -4,8 +4,8 @@ from participants import PARTICIPANTS
 from limits import DAY_START, DAY_END, MIN_APPOINTMENT, check_time_legality
 
 
-def choose_participants():
-    invite = set()
+def choose_participants(_already_invited):
+    invite = set(_already_invited) if _already_invited else set()
     print("\nPotential Participants:")
     for idx, participant in enumerate(PARTICIPANTS):
         print((idx + 1), ": ", participant, end='\n', sep='')
@@ -64,21 +64,25 @@ def ask_for_time():
             print("Please Enter Only Valid Room Number")
 
 
+def yes_no(_prompt):
+    while True:
+        try:
+            accept = input(_prompt)
+            if accept.lower() == 'y':
+                return True
+            if accept.lower() == 'n':
+                return False
+            raise ValueError
+        except (ValueError, TypeError):
+            print("Wrong Input.")
+
+
 def accept_alternative(_found, _start_t, _end_t, _room):
     time_period = "{0:}-{1:}"
     print("\n\nUnfortunately, not all the participants are available at the time you chose", end='')
     if _found:
         print(".\nThe meeting can be rescheduled to", time_period.format(_start_t, _end_t), "at room", _room)
-        while True:
-            try:
-                accept = input("\nAccept Alternative? (y/n) ")
-                if accept.lower() == 'y':
-                    return True
-                if accept.lower() == 'n':
-                    return False
-                raise ValueError
-            except (ValueError, TypeError):
-                print("Wrong Input.")
+        return yes_no("\nAccept Alternative? (y/n) ")
     else:
         print(",\nor at any other time today.")
     return False
@@ -162,3 +166,8 @@ def search_by():
             raise ValueError
         except (ValueError, TypeError):
             print("Please Insert Valid Option.\n\n")
+
+
+def do_change(_prompt):
+    print("\nDo you want to change ", _prompt, "?", sep='')
+    return yes_no("\n(y/n) - ")
