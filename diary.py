@@ -23,6 +23,7 @@ def save_diary(_diary):
         file_name_f = "{0}.Diary"
         meeting_f = "{0}\n{1}\n{2}\n"
         file = open(file_name_f.format(_diary["date"]), "w")
+        file.write('\n')
         for idx, meeting in enumerate(_diary["meetings"]):
             file.write(str(meeting_f.format(meeting[0], meeting[1], meeting[2])))
             print(*meeting[3], file=file, sep=', ')
@@ -34,8 +35,11 @@ def save_diary(_diary):
 
 
 def read_meeting(_file_o):
-    return float(_file_o.readline()[:-1]), float(_file_o.readline()[:-1]), \
-            int(_file_o.readline()[:-1]), tuple(_file_o.readline()[:-1].split(", "))
+    try:
+        return False, float(_file_o.readline()[:-1]), float(_file_o.readline()[:-1]), \
+                int(_file_o.readline()[:-1]), tuple(_file_o.readline()[:-1].split(", "))
+    except ValueError:
+        return True, 0.0, 0.0, 0, ()
 
 
 def load_diary(_old_diary):
@@ -43,32 +47,32 @@ def load_diary(_old_diary):
     try:
         file = open(file_name + ".Diary", "r")
         diary = create_diary()
-        start_t, end_t, room_n, guests = read_meeting(file)
-        result, meeting = process_appointment(diary["rooms"], diary["participants"], start_t, end_t, room_n, guests)
-        if result:
-            add_meeting(diary, meeting)
-            while f := file.read(1):
-                start_t, end_t, room_n, guests = read_meeting(file)
-                result, meeting = \
-                    process_appointment(diary["rooms"], diary["participants"], start_t, end_t, room_n, guests)
-                if not result:
-                    break
-                add_meeting(diary, meeting)
-            else:
-                _old_diary["date"] = file_name
-                _old_diary["rooms"] = diary["rooms"]
-                _old_diary["participants"] = diary["participants"]
-                _old_diary["meetings"] = diary["meetings"]
-                return True
-        return False
+        while f := file.read(1):
+            val_err, start_t, end_t, room_n, guests = read_meeting(file)
+            if not val_err:
+                result, meeting = process_appointment(diary["rooms"], diary["participants"], start_t, end_t, room_n, guests)
+                if result:
+                    add_meeting(diary, meeting)
+                    continue
+            raise ValueError
+        else:
+            _old_diary["date"], _old_diary["rooms"], _old_diary["participants"], _old_diary["meetings"] = \
+                file_name, diary["rooms"], diary["participants"], diary["meetings"]
+            return True
     except FileNotFoundError:
         print_status("File Not Found.", False)
-        return False
+    except ValueError:
+        print_status("File Corrupted.", False)
+    return False
 
 
 def add_meeting(_diary, _meeting):
-    _diary["meetings"].append(_meeting)
-    _diary["meetings"].sort(key=lambda meeting: meeting[0])
+    for idx, meet in enumerate(_diary["meetings"]):
+        if _meeting[0] < meet[0]:
+            _diary["meetings"].insert(idx, _meeting)
+            break
+    else:
+        _diary["meetings"].append(_meeting)
     update_room(_meeting[2], _diary["rooms"], _meeting[0], _meeting[1], True)
     update_participants(_meeting[3], _diary["participants"], _meeting[0], _meeting[1], True)
 
@@ -140,6 +144,7 @@ def edit_appointment(_diary):
                 update_participants(guests, _diary["participants"], start_t, end_t, False)
                 update_participants(new_meeting[3], _diary["participants"], new_meeting[0], new_meeting[1], True)
             _diary["meetings"][edit] = new_meeting
+            _diary["meetings"].sort(key=lambda meeting: meeting[0])
     else:
         status = False
     print_status("Editing Appointment", status)
